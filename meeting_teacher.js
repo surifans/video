@@ -30,10 +30,7 @@
             navigator.mediaDevices.getUserMedia(constraints).then(onstream).catch(onerror);
 
             function onstream(stream) {
-                addStreamStopListener(stream, function() {
-                    if (self.onuserleft) self.onuserleft('self');
-                });
-
+                
                 self.stream = stream;
 
                 var video = document.createElement('video');
@@ -52,13 +49,7 @@
                     }
 
                 video.srcObject = stream;
-
-                self.onaddstream({
-                    video: video,
-                    stream: stream,
-                    userid: 'self',
-                    type: 'local'
-                });
+				localMediaStream.appendChild(video);
 
                 callback(stream);
             }
@@ -206,10 +197,7 @@
             },
             onaddstream: function (stream, _userid) 
 			{
-                addStreamStopListener(stream, function() {
-                    if (root.onuserleft) root.onuserleft(_userid);
-                });
-
+                
                 var video = document.createElement('video');
                 video.id = _userid;
                 
@@ -223,48 +211,20 @@
                         video.setAttribute('controls', true);
                     }
                 video.srcObject = stream;
-
-                function onRemoteStreamStartsFlowing() 
-				{
-                    if (navigator.userAgent.match(/Android|iPhone|iPad|iPod|BlackBerry|IEMobile/i)) {
-                        return afterRemoteStreamStartedFlowing();
-                    }
-
-                    if (!(video.readyState <= HTMLMediaElement.HAVE_CURRENT_DATA || video.paused || video.currentTime <= 0)) {
-                        afterRemoteStreamStartedFlowing();
-                    } else
-                        setTimeout(onRemoteStreamStartsFlowing, 300);
-					afterRemoteStreamStartedFlowing();
-                }
-
-                function afterRemoteStreamStartedFlowing() 
-				{
-                    signaler.isbroadcaster &&
-                        signaler.signal({
-                            conferencing: true,
-                            newcomer: _userid
-                        });
-
-                    if (!root.onaddstream) return;
-                    root.onaddstream({
-                        video: video,
-                        stream: stream,
-                        userid: _userid,
-                        type: 'remote'
-                    });
-                }
-
-                onRemoteStreamStartsFlowing();
+				remoteMediaStreams.appendChild(video);
+                
             }
         };
 
 		
         window.onbeforeunload = function () {
+			
             leaveRoom();
         };
 
         window.onkeyup = function (e) {
-            if (e.keyCode == 116)
+            
+			if (e.keyCode == 116)
                 leaveRoom();
         };
 
@@ -445,26 +405,5 @@
         return swapped;
     }
 
-    window.addStreamStopListener = function (stream, callback) {
-        var streamEndedEvent = 'ended';
-        if ('oninactive' in stream) {
-            streamEndedEvent = 'inactive';
-        }
-        stream.addEventListener(streamEndedEvent, function() {
-            callback();
-            callback = function() {};
-        }, false);
-        stream.getAudioTracks().forEach(function(track) {
-            track.addEventListener(streamEndedEvent, function() {
-                callback();
-                callback = function() {};
-            }, false);
-        });
-        stream.getVideoTracks().forEach(function(track) {
-            track.addEventListener(streamEndedEvent, function() {
-                callback();
-                callback = function() {};
-            }, false);
-        });
-    };
+    
 })();

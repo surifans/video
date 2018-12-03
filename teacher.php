@@ -39,11 +39,7 @@
                 var meeting = new Meeting(userid);
 				meeting.setup();
 				
-                meeting.onaddstream = function (e) {
-                    if (e.type == 'local') localMediaStream.appendChild(e.video);
-                    if (e.type == 'remote') remoteMediaStreams.appendChild(e.video);
-                };
-					
+				
                 meeting.openSignalingChannel = function(onmessage) 
 				{
                     var channel = '66';
