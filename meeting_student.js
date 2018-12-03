@@ -11,29 +11,11 @@
 
 (function () {
 
-    if(typeof adapter === 'undefined' || typeof adapter.browserDetails === 'undefined') {
-        // https://webrtc.github.io/adapter/adapter-latest.js
-        console.warn('adapter.js is recommended.');
-    }
-    else {
-        window.adapter = {
-            browserDetails: {
-                browser: 'chrome'
-            }
-        };
-    }
-
-    if(typeof IceServersHandler === 'undefined') {
-        // https:/cdn.webrtc-experiment.com/IceServersHandler.js
-        console.warn('IceServersHandler.js is recommended.');
-    }
-
-    // a middle-agent between public API and the Signaler object
+	
     window.Meeting = function (channel) {
         var signaler, self = this;
         this.channel = channel || location.href.replace(/\/|:|#|%|\.|\[|\]/g, '');
 
-		
         // get alerted for each new meeting
         this.onmeeting = function (room) {
             if (self.detectedRoom) return;
@@ -93,13 +75,13 @@
             }
         }
 
-        
-        this.setup = function (roomid) {//新建一个房间
+        // setup new meeting room
+        this.setup = function (roomid) {
             captureUserMedia(function () {
-                //!signaler && initSignaler();
-                //signaler.broadcast({
-                //    roomid: roomid || self.channel
-                //});
+                !signaler && initSignaler();
+                signaler.broadcast({
+                    roomid: roomid || self.channel
+                });
             });
         };
 
