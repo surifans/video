@@ -14,13 +14,12 @@
 	
     window.Meeting = function (channel) {
         var signaler, self = this;
-        this.channel = channel || location.href.replace(/\/|:|#|%|\.|\[|\]/g, '');
+        this.channel = channel ;
 
-        // get alerted for each new meeting
+		
         this.onmeeting = function (room) {
             if (self.detectedRoom) return;
             self.detectedRoom = true;
-
             self.meet(room);
         };
 
@@ -74,19 +73,9 @@
                 console.error(e);
             }
         }
-
-        // setup new meeting room
-        this.setup = function (roomid) {
-            captureUserMedia(function () {
-                !signaler && initSignaler();
-                signaler.broadcast({
-                    roomid: roomid || self.channel
-                });
-            });
-        };
-
-        // join pre-created meeting room
-        this.meet = function (room) {
+		
+        this.meet = function (room) 
+		{
             captureUserMedia(function () {
                 !signaler && initSignaler();
                 signaler.join({
@@ -95,40 +84,27 @@
                 });
             });
         };
-
-        // check pre-created meeting rooms
+		
         this.check = initSignaler;
     };
-
-    // object to store all connected peers
+	
     var peers = {};
-
-    // it is a backbone object
-
-    function Signaler(root) {
-        // unique identifier for the current user
-        var userid = root.userid || getToken();
-
-        // self instance
+	
+    function Signaler(root) 
+	{
+        var userid = root.userid;
         var signaler = this;
 
         // object to store all connected participants's ids
         var participants = {};
 
         // it is called when your signaling implementation fires "onmessage"
-        this.onmessage = function (message) {
+        this.onmessage = function (message) 
+		{
             // if new room detected
             if (message.roomid && message.broadcasting && !signaler.sentParticipationRequest)
                 root.onmeeting(message);
-
-            else
-            // for pretty logging
-                console.debug(JSON.stringify(message, function (key, value) {
-                if (value && value.sdp) {
-                    console.log(value.sdp.type, '---', value.sdp.sdp);
-                    return '';
-                } else return value;
-            }, '---'));
+			
 
             // if someone shared SDP
             if (message.sdp && message.to == userid) {
@@ -137,7 +113,18 @@
 
             // if someone shared ICE
             if (message.candidate && message.to == userid)
-                this.onice(message);
+			{
+				//alert(111);
+				var candidates = [];
+				var peer = peers[message.userid];
+				if (peer) {
+					peer.addIceCandidate(message.candidate);
+					for (var i = 0; i < candidates.length; i++) {
+						peer.addIceCandidate(candidates[i]);
+					}
+					candidates = [];
+				} else candidates.push(candidates);
+			}
 
             // if someone sent participation request
             if (message.participationRequest && message.to == userid) {
@@ -146,7 +133,8 @@
 
             // session initiator transmitted new participant's details
             // it is useful for multi-user connectivity
-            if (message.conferencing && message.newcomer != userid && !!participants[message.newcomer] == false) {
+            if (message.conferencing && message.newcomer != userid && !!participants[message.newcomer] == false) 
+			{
                 participants[message.newcomer] = message.newcomer;
                 root.stream && signaler.signal({
                     participationRequest: true,
@@ -155,10 +143,9 @@
             }
         };
 
-        function participationRequest(_userid) {
-            // it is appeared that 10 or more users can send 
-            // participation requests concurrently
-            // onicecandidate fails in such case
+        function participationRequest(_userid) 
+		{
+            
             if (!signaler.creatingOffer) {
                 signaler.creatingOffer = true;
                 createOffer(_userid);
@@ -172,9 +159,7 @@
                 signaler.participants[signaler.participants.length] = _userid;
             }
         }
-
-        // reusable function to create new offer
-
+		
         function createOffer(to) {
             var _options = options;
             _options.to = to;
@@ -206,34 +191,21 @@
         this.onsdp = function (message) {
             var sdp = message.sdp;
 
-            if (sdp.type == 'offer') {
+            if (sdp.type == 'offer') 
+			{
+				//alert(111);
                 var _options = options;
                 _options.stream = root.stream;
                 _options.sdp = sdp;
                 _options.to = message.userid;
                 peers[message.userid] = Answer.createAnswer(_options);
             }
-
-            if (sdp.type == 'answer') {
-                peers[message.userid].setRemoteDescription(sdp);
-            }
+			
         };
-
-        var candidates = [];
-        // if someone shared ICE
-        this.onice = function (message) {
-            var peer = peers[message.userid];
-            if (peer) {
-                peer.addIceCandidate(message.candidate);
-                for (var i = 0; i < candidates.length; i++) {
-                    peer.addIceCandidate(candidates[i]);
-                }
-                candidates = [];
-            } else candidates.push(candidates);
-        };
-
+		
         // it is passed over Offer/Answer objects for reusability
-        var options = {
+        var options = 
+		{
             onsdp: function (sdp, to) {
                 signaler.signal({
                     sdp: sdp,
@@ -249,9 +221,9 @@
             onuserleft: function(_userid) {
                 if (root.onuserleft) root.onuserleft(_userid);
             },
-            onaddstream: function (stream, _userid) {
-                console.debug('onaddstream', '>>>>>>', stream);
-
+            onaddstream: function (stream, _userid) 
+			{
+                
                 addStreamStopListener(stream, function() {
                     if (root.onuserleft) root.onuserleft(_userid);
                 });
@@ -302,24 +274,7 @@
                 onRemoteStreamStartsFlowing();
             }
         };
-
-        // call only for session initiator
-        this.broadcast = function (_config) {
-            signaler.roomid = _config.roomid || getToken();
-            signaler.isbroadcaster = true;
-            (function transmit() {
-                signaler.signal({
-                    roomid: signaler.roomid,
-                    broadcasting: true
-                });
-
-                if (!signaler.stopBroadcasting && !root.transmitOnce)
-                    setTimeout(transmit, 3000);
-            })();
-
-            // if broadcaster leaves; clear all JSON files from Firebase servers
-            if (socket.onDisconnect) socket.onDisconnect().remove();
-        };
+		
 
         // called for each new participant
         this.join = function (_config) {
@@ -368,51 +323,19 @@
 
         var socket;
 
-        // signaling implementation
-        // if no custom signaling channel is provided; use Firebase
-        if (!root.openSignalingChannel) {
-            if (!window.Firebase) throw 'You must link <https://cdn.firebase.com/v0/firebase.js> file.';
+        socket = root.openSignalingChannel(function (message) {
+			message = JSON.parse(message);
+			if (message.userid != userid) {
+				if (!message.leaving) signaler.onmessage(message);
+				else if (root.onuserleft) root.onuserleft(message.userid);
+			}
+		});
 
-            // Firebase is capable to store data in JSON format
-            // root.transmitOnce = true;
-            socket = new window.Firebase('https://' + (root.firebase || 'signaling') + '.firebaseIO.com/' + root.channel);
-            socket.on('child_added', function (snap) {
-                var data = snap.val();
-
-                if (data.userid != userid) {
-                    if (!data.leaving) signaler.onmessage(data);
-                    else if (root.onuserleft) root.onuserleft(data.userid);
-                }
-
-                // we want socket.io behavior; 
-                // that's why data is removed from firebase servers 
-                // as soon as it is received
-                // data.userid != userid && 
-                if (data.userid != userid) snap.ref().remove();
-            });
-
-            // method to signal the data
-            this.signal = function (data) {
-                data.userid = userid;
-                socket.push(data);
-            };
-        } else {
-            // custom signaling implementations
-            // e.g. WebSocket, Socket.io, SignalR, WebSycn, XMLHttpRequest, Long-Polling etc.
-            socket = root.openSignalingChannel(function (message) {
-                message = JSON.parse(message);
-                if (message.userid != userid) {
-                    if (!message.leaving) signaler.onmessage(message);
-                    else if (root.onuserleft) root.onuserleft(message.userid);
-                }
-            });
-
-            // method to signal the data
-            this.signal = function (data) {
-                data.userid = userid;
-                socket.send(JSON.stringify(data));
-            };
-        }
+		// method to signal the data
+		this.signal = function (data) {
+			data.userid = userid;
+			socket.send(JSON.stringify(data));
+		};
     }
 
     // reusable stuff
@@ -453,102 +376,13 @@
 
     var dontDuplicateOnAddTrack = {};
 
-    function getToken() {
-        if (window.crypto && window.crypto.getRandomValues && navigator.userAgent.indexOf('Safari') === -1) {
-            var a = window.crypto.getRandomValues(new Uint32Array(3)),
-                token = '';
-            for (var i = 0, l = a.length; i < l; i++) {
-                token += a[i].toString(36);
-            }
-            return token;
-        } else {
-            return (Math.random() * new Date().getTime()).toString(36).replace(/\./g, '');
-        }
-    }
+    
 
     function onSdpError(e) {
         console.error('sdp error:', e);
     }
 
-    // var offer = Offer.createOffer(config);
-    // offer.setRemoteDescription(sdp);
-    // offer.addIceCandidate(candidate);
-    var Offer = {
-        createOffer: function (config) {
-            var peer = new RTCPeerConnection(iceServers);
-
-            if('addStream' in peer) {
-                peer.onaddstream = function(event) {
-                    config.onaddstream(event.stream, config.to);
-                };
-
-                if (config.stream) {
-                    peer.addStream(config.stream);
-                }
-            }
-            else if('addTrack' in peer) {
-                peer.onaddtrack = function(event) {
-                    event.stream = event.streams.pop();
-
-                    if(dontDuplicateOnAddTrack[event.stream.id] && adapter.browserDetails.browser !== 'safari') return;
-                    dontDuplicateOnAddTrack[event.stream.id] = true;
-
-                    config.onaddstream(event.stream, config.to);
-                };
-
-                if (config.stream) {
-                    config.stream.getTracks().forEach(function(track) {
-                        peer.addTrack(track, config.stream);
-                    });
-                }
-            }
-            else {
-                throw new Error('WebRTC addStream/addTrack is not supported.');
-            }
-
-            peer.onicecandidate = function (event) {
-                config.onicecandidate(event.candidate, config.to);
-            };
-
-            peer.oniceconnectionstatechange = peer.onsignalingstatechange = function() {
-                if (peer && peer.iceConnectionState && peer.iceConnectionState.search(/disconnected|closed|failed/gi) !== -1) {
-                    if(peers[config.to]) {
-                        delete peers[config.to];
-                    }
-
-                    if (config.onuserleft) config.onuserleft(config.to);
-                }
-            };
-
-            peer.createOffer(offerAnswerConstraints).then(function (sdp) {
-                // https://github.com/muaz-khan/RTCMultiConnection/blob/master/dev/CodecsHandler.js
-                if(typeof CodecsHandler !== 'undefined') {
-                    sdp.sdp = CodecsHandler.preferCodec(sdp.sdp, 'vp9');
-                }
-
-                peer.setLocalDescription(sdp).then(function() {
-                    config.onsdp(sdp, config.to)
-                }).catch(onSdpError);
-            }).catch(onSdpError);
-
-            function sdpCallback() {
-                config.onsdp(peer.localDescription, config.to);
-            }
-
-            this.peer = peer;
-
-            return this;
-        },
-        setRemoteDescription: function (sdp) {
-            this.peer.setRemoteDescription(new RTCSessionDescription(sdp)).catch(onSdpError);
-        },
-        addIceCandidate: function (candidate) {
-            this.peer.addIceCandidate(new RTCIceCandidate({
-                sdpMLineIndex: candidate.sdpMLineIndex,
-                candidate: candidate.candidate
-            }));
-        }
-    };
+    
 
     // var answer = Answer.createAnswer(config);
     // answer.setRemoteDescription(sdp);

@@ -34,9 +34,10 @@
             <script>
 				var remoteMediaStreams = document.getElementById('remote_streams');
 				var localMediaStream = document.getElementById('local_streams');
-				var userid=11;
+				var userid=66;
 				
                 var meeting = new Meeting(userid);
+				meeting.userid='11';
 				
                 meeting.onmeeting = function (room) 
 				{
@@ -45,13 +46,11 @@
 				
                 meeting.onaddstream = function (e) {
                     if (e.type == 'local') localMediaStream.appendChild(e.video);
-                    if (e.type == 'remote') remoteMediaStreams.insertBefore(e.video, remoteMediaStreams.firstChild);
+                    if (e.type == 'remote') remoteMediaStreams.appendChild(e.video);
                 };
-                
-                // via: https://github.com/muaz-khan/WebRTC-Experiment/tree/master/websocket-over-nodejs
+				
                 meeting.openSignalingChannel = function(onmessage) {
                     var channel = '66';
-                    // wss://websocket-over-nodejs.herokuapp.com:443/
                     var websocket = new WebSocket('wss://webrtcweb.com:9449/');
                     websocket.onopen = function () {
                         websocket.push(JSON.stringify({

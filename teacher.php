@@ -34,14 +34,14 @@
             <script>
 				var remoteMediaStreams = document.getElementById('remote_streams');
 				var localMediaStream = document.getElementById('local_streams');
-				var userid=00;
+				var userid=66;
 				
                 var meeting = new Meeting(userid);
 				meeting.setup();
 				
                 meeting.onaddstream = function (e) {
                     if (e.type == 'local') localMediaStream.appendChild(e.video);
-                    if (e.type == 'remote') remoteMediaStreams.insertBefore(e.video, remoteMediaStreams.firstChild);
+                    if (e.type == 'remote') remoteMediaStreams.appendChild(e.video);
                 };
 					
                 meeting.openSignalingChannel = function(onmessage) 
