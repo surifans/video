@@ -30,58 +30,21 @@
 			<div id="local_streams"></div>
 		
 			<div id="remote_streams"></div>
-        
+			<button onclick="start();" style="width:10vh;height:3vh">通话</button>
             <script>
 				var remoteMediaStreams = document.getElementById('remote_streams');
 				var localMediaStream = document.getElementById('local_streams');
-				var userid=66;
+				var channel='66';
 				
-                var meeting = new Meeting(userid);
+                var meeting = new Meeting(channel);
 				meeting.userid='11';
-				
-                meeting.onmeeting = function (room) 
-				{
-                    if (room) meeting.meet(room);
-                };
-				
-                meeting.openSignalingChannel = function(onmessage) {
-                    var channel = '66';
-                    var websocket = new WebSocket('wss://webrtcweb.com:9449/');
-                    websocket.onopen = function () {
-                        websocket.push(JSON.stringify({
-                            open: true,
-                            channel: channel
-                        }));
-                    };
-                    websocket.push = websocket.send;
-                    websocket.send = function (data) {
-                        if(websocket.readyState != 1) {
-                            return setTimeout(function() {
-                                websocket.send(data);
-                            }, 300);
-                        }
-                        
-                        websocket.push(JSON.stringify({
-                            data: data,
-                            channel: channel
-                        }));
-                    };
-                    websocket.onmessage = function(e) {
-                        onmessage(JSON.parse(e.data));
-                    };
-                    return websocket;
-                };
-
-				
-                meeting.onuserleft = function (userid) {
-                    var video = document.getElementById(userid);
-                    if (video) video.parentNode.removeChild(video);
-                };
-
-					
                 meeting.check();
 
-                
+                function start() 
+				{
+					meeting.onmeeting0();
+					
+				}
             </script>
             
             

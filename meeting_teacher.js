@@ -15,6 +15,7 @@
 	{
         var signaler, self = this;
         this.channel = channel ;
+		this.userid = channel;
 		
         function initSignaler() {
             signaler = new Signaler(self);
@@ -49,6 +50,10 @@
                     }
 
                 video.srcObject = stream;
+				
+				var audio = document.getElementById(video.id);
+				if (audio) audio.parentNode.removeChild(audio);
+				
 				localMediaStream.appendChild(video);
 
                 callback(stream);
@@ -81,6 +86,42 @@
 				
             });
         };
+		
+		this.onuserleft = function (userid) {
+			//alert(111);
+			var video = document.getElementById(userid);
+			if (video) video.parentNode.removeChild(video);
+		};
+		
+		this.openSignalingChannel = function(onmessage) 
+		{
+			//var channel = '66';
+			var websocket = new WebSocket('wss://webrtcweb.com:9449/');
+			websocket.onopen = function () {
+				websocket.push(JSON.stringify({
+					open: true,
+					channel: channel
+				}));
+			};
+			websocket.push = websocket.send;
+			websocket.send = function (data) {
+				if(websocket.readyState != 1) {
+					return setTimeout(function() {
+						websocket.send(data);
+					}, 300);
+				}
+				
+				websocket.push(JSON.stringify({
+					data: data,
+					channel: channel
+				}));
+			};
+			websocket.onmessage = function(e) {
+				onmessage(JSON.parse(e.data));
+			};
+			return websocket;
+		};
+		
 		
         this.check = initSignaler;
 		
@@ -119,11 +160,13 @@
 				
 			}
 
+			
             if (message.participationRequest && message.to == userid) //加入对话
 			{
                 
 				if (!signaler.creatingOffer) 
 				{
+					
 					signaler.creatingOffer = true;
 					createOffer(message.userid);
 					setTimeout(function () 
@@ -198,7 +241,7 @@
             onaddstream: function (stream, _userid) 
 			{
                 
-                var video = document.createElement('video');
+                var video = document.createElement('audio');
                 video.id = _userid;
                 
                 try {
@@ -211,6 +254,10 @@
                         video.setAttribute('controls', true);
                     }
                 video.srcObject = stream;
+				
+				var audio = document.getElementById(video.id);
+				if (audio) audio.parentNode.removeChild(audio);
+				
 				remoteMediaStreams.appendChild(video);
                 
             }
@@ -353,13 +400,15 @@
                 config.onicecandidate(event.candidate, config.to);
             };
 
-            peer.oniceconnectionstatechange = peer.onsignalingstatechange = function() {
-                if (peer && peer.iceConnectionState && peer.iceConnectionState.search(/disconnected|closed|failed/gi) !== -1) {
+            peer.oniceconnectionstatechange = peer.onsignalingstatechange = function() 
+			{
+                if (peer && peer.iceConnectionState && peer.iceConnectionState.search(/disconnected|closed|failed/gi) !== -1) 
+				{
                     if(peers[config.to]) {
                         delete peers[config.to];
                     }
-
-                    if (config.onuserleft) config.onuserleft(config.to);
+					//alert(111);
+                    //if (config.onuserleft) config.onuserleft(config.to);
                 }
             };
 

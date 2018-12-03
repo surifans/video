@@ -17,10 +17,49 @@
         this.channel = channel ;
 
 		
-        this.onmeeting = function (room) {
-            if (self.detectedRoom) return;
-            self.detectedRoom = true;
-            self.meet(room);
+		this.onlisten = function (room) 
+		{
+            
+			if(document.getElementById(channel)) return;
+			
+			signaler.signal({
+				participationRequest: true,
+				to: room.userid
+			});
+			signaler.sentParticipationRequest = true;
+			
+        };
+		
+		this.onmeeting0 = function () 
+		{
+            captureUserMedia(function () 
+			{
+                //alert(this.channel);
+				signaler.signal({
+					participationRequest: true,
+					to: this.channel
+				});
+				signaler.sentParticipationRequest = true;
+				
+            });
+        };
+		
+        this.onmeeting = function (room) 
+		{
+            if(document.getElementById(channel)) return;
+            captureUserMedia(function () {
+                !signaler && initSignaler();
+                
+				signaler.signal({
+					participationRequest: true,
+					to: room.userid
+				});
+				signaler.sentParticipationRequest = true;
+				
+            });
+			
+			
+			
         };
 
         function initSignaler() {
@@ -30,7 +69,7 @@
         function captureUserMedia(callback) {
             var constraints = {
                 audio: true,
-                video: true
+                video: false
             };
 
             navigator.mediaDevices.getUserMedia(constraints).then(onstream).catch(onerror);
@@ -40,7 +79,7 @@
 
                 self.stream = stream;
 
-                var video = document.createElement('video');
+                var video = document.createElement('audio');
                 video.id = 'self';
                 video.muted = true;
                 video.volume = 0;
@@ -56,6 +95,10 @@
                     }
 
                 video.srcObject = stream;
+				
+				var audio = document.getElementById(video.id);
+				if (audio) audio.parentNode.removeChild(audio);
+				
 				localMediaStream.appendChild(video);
 				
 
@@ -67,16 +110,41 @@
             }
         }
 		
-        this.meet = function (room) 
+		this.onuserleft = function (userid) {
+			//alert(111);
+			var video = document.getElementById(userid);
+			if (video) video.parentNode.removeChild(video);
+		};
+		
+		this.openSignalingChannel = function(onmessage) 
 		{
-            captureUserMedia(function () {
-                !signaler && initSignaler();
-                signaler.join({
-                    to: room.userid,
-                    roomid: room.roomid
-                });
-            });
-        };
+			//var channel = '66';
+			var websocket = new WebSocket('wss://webrtcweb.com:9449/');
+			websocket.onopen = function () {
+				websocket.push(JSON.stringify({
+					open: true,
+					channel: channel
+				}));
+			};
+			websocket.push = websocket.send;
+			websocket.send = function (data) {
+				if(websocket.readyState != 1) {
+					return setTimeout(function() {
+						websocket.send(data);
+					}, 300);
+				}
+				
+				websocket.push(JSON.stringify({
+					data: data,
+					channel: channel
+				}));
+			};
+			websocket.onmessage = function(e) {
+				onmessage(JSON.parse(e.data));
+			};
+			return websocket;
+		};
+		
 		
         this.check = initSignaler;
     };
@@ -87,16 +155,18 @@
 	{
         var userid = root.userid;
         var signaler = this;
-
-        // object to store all connected participants's ids
+		
         var participants = {};
 
-        // it is called when your signaling implementation fires "onmessage"
         this.onmessage = function (message) 
 		{
-            // if new room detected
+
             if (message.roomid && message.broadcasting && !signaler.sentParticipationRequest)
-                root.onmeeting(message);
+			{
+				root.onmeeting(message);
+				//root.onlisten(message);
+			}
+                
 			
 
             // if someone shared SDP
@@ -232,6 +302,10 @@
                         video.setAttribute('controls', true);
                     }
                 video.srcObject = stream;
+				
+				var audio = document.getElementById(video.id);
+				if (audio) audio.parentNode.removeChild(audio);
+				
 				remoteMediaStreams.appendChild(video);
 				
 				
@@ -240,15 +314,7 @@
         };
 		
 
-        // called for each new participant
-        this.join = function (_config) {
-            signaler.roomid = _config.roomid;
-            this.signal({
-                participationRequest: true,
-                to: _config.to
-            });
-            signaler.sentParticipationRequest = true;
-        };
+        
 
         window.onbeforeunload = function () {
             leaveRoom();
